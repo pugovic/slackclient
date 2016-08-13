@@ -1,0 +1,14 @@
+name = Adds Slack service to the site
+description = Add this module if you want request last messages from Slack service
+package = CUSTOM
+version = VERSION
+core = 7.x
+configure = admin/config/services/slackclient
+
+
+
+ 
+
+
+
+

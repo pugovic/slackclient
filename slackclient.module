@@ -1,0 +1,126 @@
+<?php
+
+/**
+ * @file
+ *   Main file for implements main hooks
+ */
+
+/**
+ * Implements hook_menu()
+ */
+function slackclient_menu() {
+    $items['admin/config/services/slackclient'] = array(
+        'title' => 'Slack Setting Form',
+        'description' => 'Setup main setting for Slack module',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('slackclient_config_form'),
+        'access arguments' => array('slack client configuration'),
+    );
+    return $items;
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function slackclient_block_info() {
+    $blocks = array();
+// Special block slack client module
+$blocks["slackclient"] = array(
+'info' => t('Recently Slack Messages'),
+'cache' => DRUPAL_NO_CACHE,
+);
+
+return $blocks;
+}
+
+
+/**
+ * Implements hook_block_view().
+ */
+function slackclient_block_view($delta = '') {
+    // Special block for multi
+    if ($delta == 'slackclient') {
+
+        $items = slackclient_get_messages(10);
+
+        $block = array(
+            'subject' => t('Slack client block'),
+            'content' => theme('item_list', $items),
+        );
+        return $block;
+    }
+    return NULL;
+}
+
+/**
+ * Implements hook_form()
+ */
+function slackclient_config_form() {
+    $form = array();
+    $form['slackclient_request_path'] = array(
+        '#title' => t('Path with method'),
+        '#type' => 'textfield',
+        '#default_value' => variable_get('slackclient_request_path', ""),
+        '#size' => 30,
+        '#required' => true,
+    );
+
+    $form['slackclient_channel_name'] = array(
+        '#title' => t('Channel name'),
+        '#type' => 'textfield',
+        '#default_value' => variable_get('slackclient_channel_name', ""),
+        '#size' => 30,
+        '#required' => true,
+    );
+
+    $form['slackclient_token'] = array(
+        '#title' => t('Your client token'),
+        '#type' => 'textfield',
+        '#default_value' => variable_get('slackclient_token', ""),
+        '#size' => 30,
+        '#required' => true,
+    );
+
+    return system_settings_form($form);
+}
+
+
+/**
+ * Implements hook_channel_last_messages()
+ *
+ * @param $count Count last messages on slack channel
+ * @return array
+ */
+function slackclient_channel_last_messages($count = 10) {
+    $services = array();
+    $token = variable_get('slackclient_token', "");
+    $channel = variable_get('slackclient_channel_name', "");
+    $path = variable_get('slackclient_request_path', "");
+
+    $requested_url = "$path?token=$token&channel=$channel&count=$count";
+
+    $request = drupal_http_request($requested_url);
+
+    $result_data = drupal_json_decode($request->data);
+
+    $services['items'] = array_map(function ($item) {
+            return $item['text'];
+        }, $result_data['messages']);
+
+    return ($services);
+}
+
+/**
+ * Gets last message from slack service
+ *
+ * @param $count_messages Count messages what you want receive
+ * @return array Return messages
+ */
+function slackclient_get_messages($count_messages = 10) {
+    $items = module_invoke_all("channel_last_messages");
+    // call hook alter
+    drupal_alter("channel_last_messages", $items);
+
+    return $items;
+}
+
